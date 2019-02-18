@@ -6,8 +6,9 @@ IN: riley-csv
 
 ! So dirty
 ! Needs support for dirty commas
-
-TUPLE: item desc qty price notes rtn ;
+! Don't repeat yourself eh?
+! TODO: Add support for running the command line
+! argument file instead of test.csv
 
 : riley-get-data ( path -- seq )
     utf8 <file-reader> stream-lines ;
@@ -30,7 +31,7 @@ TUPLE: item desc qty price notes rtn ;
     [ second "" equal? ] reject  ;
 
 CONSTANT: riley-invitem-header 
-    { "!INVITEM" "NAME" "INVITEMTYPE" "DESC" "PURCHASEDESC" "ACCNT" "ASSETACCNT" "COGSACCNT" "PRICE" "COST" "TAXABLE" "PAYMETH" "TAXVEND" "TAXDIST" "PREFVEND" "REORDERPOINT" "EXTRA" }
+{ "!INVITEM" "NAME" "INVITEMTYPE" "DESC" "PURCHASEDESC" "ACCNT" "ASSETACCNT" "COGSACCNT" "PRICE" "COST" "TAXABLE" "PAYMETH" "TAXVEND" "TAXDIST" "PREFVEND" "REORDERPOINT" "EXTRA" }
 
 : riley-accnt-header ( -- seq )
     { "!ACCNT" "NAME" "ACCNTTYPE" "DESC" "ACCNUM" "EXTRA" } ;
@@ -53,8 +54,14 @@ CONSTANT: riley-invitem-header
 : riley-inv-template ( -- seq )
     { "NAME" "DESC" "PRICE" } ;
 
+: riley-spl-template ( -- seq )
+    { "MEMO" "INVITEM" "QNTY" "PRICE" } ;
+
 : riley-inv-index ( -- seq )
     { 0 2 } ;
+
+: riley-trns-index ( -- seq )
+    { 5 } ;
 
 : riley-filter-inv ( seq -- seq' )
     [ riley-inv-index member? swap drop ] filter-index ;
@@ -83,6 +90,12 @@ CONSTANT: riley-invitem-header
 
 : riley-clear-by-member ( seq -- seq' )
     [ dup riley-invitem-header in? [ drop "" ] when ] map ;
+
+: riley-trns-clear ( seq -- seq' )
+    [ dup riley-trns-header in? [ drop "" ] when ] map ;
+
+: riley-spl-clear ( seq -- seq' )
+    [ dup riley-spl-header in? [ drop "" ] when ] map ;
 
 :: individual-invoice-change ( str -- x )
     riley-invitem-header 
@@ -113,15 +126,40 @@ CONSTANT: riley-invitem-header
     "!CLASS\tNAME" print
     "CLASS\tclass" print ;
 
+:: individual-spl-change ( str -- x )
+    riley-spl-header
+    str first str second
+    riley-replace ;
+
+: write-spl-line ( seq -- )
+    rest dup first prefix
+    [ "" equal? ] reject
+    riley-spl-template swap zip
+    [ individual-spl-change riley-spl-clear ] map
+    riley-spl-header riley-add-static-spl
+    riley-spl-clear 
+    [ [ append ] 2map ] reduce
+    riley-tab-print ;
+    
+    
+: write-spl-lines ( seq -- )
+    [ write-spl-line ] each ;
+
 : write-transaction-header ( -- )
     riley-trns-header riley-tab-print
     riley-spl-header riley-tab-print
     "!ENDTRNS" print ;
 
-: riley-temp ( -- seq  )
+: write-transaction ( seq -- )
+    riley-trns-header swap first "NAME" swap riley-replace
+    riley-add-static-trns
+    riley-trns-clear
+    riley-tab-print ;
+
+: riley-temp ( -- )
     "test.csv" riley-get-data riley-split-seq
     [ riley-perfect-data riley-show-and-set ] dip
-    riley-perfect-data
+    riley-perfect-data dup
     [
         rest prepare-invoice-item 
         and-change-invoice-table
@@ -131,8 +169,10 @@ CONSTANT: riley-invitem-header
         write-invoice-lines
         write-class-lines
         write-transaction-header
-        
+        [ write-transaction ] dip
+        write-spl-lines
+        "ENDTRNS" print
     ] with-file-writer ;
 
 
-    
+
