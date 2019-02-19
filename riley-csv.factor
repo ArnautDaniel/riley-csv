@@ -1,6 +1,6 @@
 ! Copyright (C) 2019 Your name.
 ! See http://factorcode.org/license.txt for BSD license.
-USING: arrays assocs io io.encodings.utf8 io.files kernel namespaces
+USING: arrays assocs command-line io io.encodings.utf8 io.files kernel namespaces
 sequences sequences.deep sequences.extras sets splitting locals  ;
 IN: riley-csv
 
@@ -140,8 +140,8 @@ CONSTANT: riley-invitem-header
     riley-spl-clear 
     [ [ append ] 2map ] reduce
     riley-tab-print ;
-    
-    
+
+
 : write-spl-lines ( seq -- )
     [ write-spl-line ] each ;
 
@@ -156,15 +156,15 @@ CONSTANT: riley-invitem-header
     riley-trns-clear
     riley-tab-print ;
 
-: riley-temp ( -- )
-    "test.csv" riley-get-data riley-split-seq
+: riley-csv ( -- )
+    command-line get first riley-get-data riley-split-seq
     [ riley-perfect-data riley-show-and-set ] dip
     riley-perfect-data dup
     [
         rest prepare-invoice-item 
         and-change-invoice-table
     ] map
-    "test.iif" utf8
+     command-line get first ".iif" append utf8
     [
         write-invoice-lines
         write-class-lines
@@ -175,4 +175,20 @@ CONSTANT: riley-invitem-header
     ] with-file-writer ;
 
 
+: riley-csv-parse ( -- )
+    command-line get first riley-get-data riley-split-seq
+    [ riley-perfect-data riley-show-and-set ] dip
+    riley-perfect-data [ rest [ "" equal? ] reject ] map
+    swap
+    command-line get first ".ril" append  utf8
+    [
+        riley-tab-print
+        [ riley-tab-print ] each
+    ] with-file-writer ;
 
+: riley-csv-command-line ( -- )
+    command-line get second dup
+    "-1" equal? [ riley-csv-parse ] when
+    "-2" equal? [ riley-csv ] when ;
+
+MAIN: riley-csv-command-line
