@@ -2,6 +2,7 @@
 (require gregor)
 (require racket/tcp)
 (require binaryio)
+(require racket/cmdline)
 
 (define (get-input path)
   (call-with-input-file path
@@ -97,17 +98,19 @@ Atlanta 30011 \\hfill email@email.org
       (display end-table out)
       (display end-document out)))))
       
-(define-values (sock-in sock-out) (tcp-connect "127.0.0.1" 8882))
 
-(define (send-latex-to-serv latex)
-  (write latex sock-out)
-  (newline sock-out)
-  (flush-output sock-out))
+(define (riley-pdf path)
+  
+  (define (send-latex-to-serv latex)
+    (write latex sock-out)
+    (newline sock-out)
+    (flush-output sock-out))
 
-(define (main path)
+  (define-values (sock-in sock-out) (tcp-connect "127.0.0.1" 8882))
+
   (send-latex-to-serv (write-latex (get-input path)))
   (let ((filesize (read sock-in)))
-    (call-with-output-file "racket.pdf"
+    (call-with-output-file (string-append (first (string-split path ".")) "-final.pdf")
       (lambda (out)
 	(let loop ((n 1)
 		   (data (integer->bytes (read sock-in) 2 #f #f)))
@@ -115,3 +118,12 @@ Atlanta 30011 \\hfill email@email.org
 	    (begin
 	      (display data out)
 	      (loop (+ n 1) (integer->bytes (read sock-in) 2 #f #f)))))))))
+
+
+(provide main)
+(define (main . args)
+  (command-line #:program "(riley-pdf)"
+                #:args (path) path))
+
+
+(riley-pdf (main))

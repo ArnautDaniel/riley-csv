@@ -7,7 +7,7 @@
 #include <string.h>
 
 void print_usage(char** argv) {
-  printf("%s path [-cpb]\n-c \t generate a iif file from an excel file\n-p \t generate a pdf file from an excel file\n-b \t do both of the above\n", argv[0]);
+  printf("%s path [-cpbh]\n-c \t generate a iif file from an excel file\n-p \t generate a pdf file from an excel file\n-b \t do both of the above\n", argv[0]);
   return;
 }
 
@@ -26,10 +26,10 @@ void run_factor(char*  runtime, int flag){
   return;
 }
 
-void run_racket(char** argv){
+void run_racket(char* runtime){
   char racket[PATH_MAX];
   strcpy(racket, "./riley-pdf ");
-  strcat(racket, argv[2]);
+  strcat(racket, runtime);
   system(racket);
   return;
 }
@@ -46,7 +46,7 @@ int main (int argc, char **argv) {
   strcpy(runtime, argv[1]);
   
   printf("\n%s\n", argv[1]);
-  while ((d = getopt (argc, argv, "cpb:")) != -1){
+  while ((d = getopt (argc, argv, "cpbh")) != -1){
     switch (d) {
     case 'c':
       cflag = 1;
@@ -70,13 +70,13 @@ int main (int argc, char **argv) {
     pflag = 1;
   }
   
-  if (cflag == 1){
+  if (cflag){
     run_factor(runtime, cflag);
   }
   
-  /*  if (pflag == 1){
-      run_racket(argv);
-      }*/
+   if (pflag == 1){
+      run_racket(runtime);
+   }
   
   exit(1);
 }
