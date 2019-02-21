@@ -164,7 +164,7 @@ CONSTANT: riley-invitem-header
         rest prepare-invoice-item 
         and-change-invoice-table
     ] map
-     command-line get first ".iif" append utf8
+     command-line get first "." split first ".iif" append utf8
     [
         write-invoice-lines
         write-class-lines
@@ -180,7 +180,7 @@ CONSTANT: riley-invitem-header
     [ riley-perfect-data riley-show-and-set ] dip
     riley-perfect-data [ rest [ "" equal? ] reject ] map
     swap
-    command-line get first ".ril" append  utf8
+    command-line get first "." split first ".ril" append  utf8
     [
         riley-tab-print
         [ riley-tab-print ] each

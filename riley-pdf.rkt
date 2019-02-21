@@ -35,9 +35,9 @@
 \\textsc{Print}\\hspace{1.25cm} \\makebox[3in]{\\hrulefill}
   ")
 
-(define document-conf "\\documentclass{invoice} % Use the custom invoice class (invoice.cls)
+(define document-conf "\\documentclass{invoice}
 
-\\def \\tab {\\hspace*{3ex}} % Define \\tab to create some horizontal white space
+\\def \\tab {\\hspace*{3ex}} 
 
 \\usepackage{color}
 \\usepackage{courier}
@@ -50,13 +50,13 @@
 
 (define heading-conf "\\includegraphics[scale=.33]{caps}
 \\hfil{\\huge\\color{red}{\\textsc{Checkout Sheet}}}\\hfil
-% \\bigskip\\break % Whitespace
+ \\bigskip\\break 
 \\break
-\\hrule % Horizontal line
+\\hrule 
 
 12 Turner Field \\hfill \\emph{Mobile:} (000) 000-0000 \\\\
 APT000 \\hfill{ \\emph{Office:} (000) 000-0000} \\\\
-% Your address and contact information
+
 Atlanta 30011 \\hfill email@email.org
 \\\\ \\\\
 {\\bf Invoice To:} \\\\ ")
@@ -97,7 +97,9 @@ Atlanta 30011 \\hfill email@email.org
 		   (newline out)) itemdata)
       (display end-table out)
       (display end-document out)))))
-      
+
+
+(define factor-mode (make-parameter #f))
 
 (define (riley-pdf path)
   
@@ -109,8 +111,9 @@ Atlanta 30011 \\hfill email@email.org
   (define-values (sock-in sock-out) (tcp-connect "127.0.0.1" 8882))
 
   (send-latex-to-serv (write-latex (get-input path)))
+  
   (let ((filesize (read sock-in)))
-    (call-with-output-file (string-append (first (string-split path ".")) "-final.pdf")
+    (call-with-output-file (string-append (first (string-split path ".")) "-final.pdf") #:exists 'replace
       (lambda (out)
 	(let loop ((n 1)
 		   (data (integer->bytes (read sock-in) 2 #f #f)))
@@ -119,11 +122,40 @@ Atlanta 30011 \\hfill email@email.org
 	      (display data out)
 	      (loop (+ n 1) (integer->bytes (read sock-in) 2 #f #f)))))))))
 
+(define (change-name path)
+  (let ((str (string-split path ".")))
+    (rename-file-or-directory (string-append (car str) ".xlsx.Sheet1.csv")
+			      (string-append (car str) ".csv") #t)
+    (string-append (car str) ".csv")))
 
+(define (convert-to-ril path)
+  (system (string-append "./riley-csv " path " -1"))
+  (delete-file (string-append (car (string-split path ".")) ".csv"))
+  (let ((res (string-append (car (string-split path ".")) ".ril")))
+    (riley-pdf res)
+    (delete-file res)))
+
+(define (convert-to-csv path)
+  (if (system (string-append "./xlsxio_xlsx2csv " path))
+      (convert-to-ril (change-name path))
+      (error "System command failed to make csv")))
+
+(define (factor-convert path)
+  (convert-to-ril (convert-to-csv path)))
+
+(define (riley-pdf-pre path)
+  (if (factor-mode)
+      (factor-convert path)
+      (riley-pdf path)))
+
+;; If -c is not set then assume a .ril already exists
 (provide main)
 (define (main . args)
   (command-line #:program "(riley-pdf)"
-                #:args (path) path))
+		#:once-each
+		(("-c" "--cvs-mode") "Run factor preprocessor first"
+		 (factor-mode #t))
+		#:args (path) path))
 
-
-(riley-pdf (main))
+(riley-pdf-pre (main))
+ 
