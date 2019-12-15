@@ -1,5 +1,5 @@
 # riley-csv
-An experiment in the insane crevices of silverbeard's mind.
+An experiment in the insane crevices of my mind.
 
 This project consists of making single programs that do one thing.  (hopefully well).
 
